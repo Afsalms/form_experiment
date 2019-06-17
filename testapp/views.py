@@ -59,19 +59,16 @@ class HomeView(View):
     def get(self, request, *args, **kwargs):
         return self.render_home_view(request)
 
-    @transaction.atomic
+    
     def post(self, request, *args, **kwargs):
         data = {"first_name": "first" , "last_name": "Last", "user_type": 1, "country": 1, 
-            "phonenumber": "9988776655"}
+            "phonenumber": "998877665555"}
         form = SignUpForm(data=data)
-        roll_back_point = transaction.savepoint()
         if form.is_valid():
             created, user_obj = self.create_user(request, form)
             if created:
-                transaction.savepoint_commit(roll_back_point)
                 return self.render_home_view(request)
             else:
-                transaction.savepoint_rollback(roll_back_point) 
                 return self.render_home_view(request, "something happened")
         errors_json = json.loads(form.errors.as_json())
         return self.render_home_view(request, errors_json)
@@ -80,10 +77,15 @@ class HomeView(View):
         return render(request, self.template_name, {"countries":  self.countries,
             "user_types": self.user_types, "errors": errors})
 
+
+    @transaction.atomic
     def create_user(self, request, form):
+        roll_back_point = transaction.savepoint()
         try:
             user_obj = form.save()
+            transaction.savepoint_commit(roll_back_point)
             return True, user_obj 
         except Exception as e:
+            transaction.savepoint_rollback(roll_back_point) 
             return False , {}
 

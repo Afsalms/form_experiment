@@ -89,3 +89,15 @@ class HomeView(View):
             transaction.savepoint_rollback(roll_back_point) 
             return False , {}
 
+from django.contrib.auth.mixins import LoginRequiredMixin
+
+
+
+class DashboardView(LoginRequiredMixin, View):
+
+    template_name = "dashboard.html"
+    login_url = '/login/'
+
+    def get(self, request, *args, **kwargs):
+        return render(request, self.template_name)
+

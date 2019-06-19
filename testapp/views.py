@@ -5,6 +5,8 @@ from django.views import View
 from django.db import transaction
 from django.contrib.auth import authenticate, login, logout
 from django.http import HttpResponseRedirect
+from django.http import HttpResponse
+
 
 
 
@@ -156,4 +158,53 @@ class LogoutView(LoginRequiredView):
         return HttpResponseRedirect('/login/')
 
 
+from django.contrib.auth.tokens import default_token_generator
 
+
+class SecretDetailsForm(forms.Form):
+    secret_question = forms.CharField(max_length=255, min_length=1)
+    secret_answer = forms.CharField(max_length=255, min_length=1)
+    password = forms.CharField(max_length=255, min_length=1)
+
+
+class SetPasswordAndSecretDetails(View):
+    template_name = "secret.html"
+    user = None
+    form = SecretDetailsForm
+
+    def dispatch(self, request, *args, **kwargs):
+        is_token_valid = self.validate_token(request, kwargs.get("user_id"),
+            kwargs.get("token"))
+        if not is_token_valid:
+            return HttpResponse("Invalid link")
+        return super().dispatch(request, *args, **kwargs)
+
+    def validate_token(self, request, user_id, token):
+        try:
+            user_obj = User.objects.get(id=user_id)
+            is_token_valid = default_token_generator.check_token(user_obj, token)
+            self.user = user_obj
+            return is_token_valid
+        except User.DoesNotExist:
+            return False
+
+    def get(self, request, *args, **kwargs):
+        return self.render_secret_view(request)
+
+    def post(self, request, *args, **kwargs):
+        form = self.form(data=request.POST)
+        if form.is_valid():
+            user_obj = self.user
+            user_obj.secret_question = form.cleaned_data["secret_question"]
+            user_obj.secret_answer = form.cleaned_data["secret_answer"]
+            user_obj.set_password(form.cleaned_data["password"])
+            user_obj.save()
+            return self.render_secret_view(request, None, "Updated user details")
+        errors_json = json.loads(form.errors.as_json())
+        return self.render_secret_view(request, errors_json)
+
+    def render_secret_view(self, request, errors=None, success=None):
+        posted_data = request.POST
+        return render(request, self.template_name, {"errors": errors,
+            "posted_data": posted_data, "path": request.path,
+            "success": success})

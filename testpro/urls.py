@@ -17,11 +17,13 @@ from django.contrib import admin
 from django.urls import path
 
 
-from testapp.views import LoginView, DashboardView, LogoutView
+from testapp.views import LoginView, DashboardView, LogoutView, \
+    SetPasswordAndSecretDetails
 
 urlpatterns = [
     path('admin/', admin.site.urls),
     path('login/', LoginView.as_view()),
     path('home/', DashboardView.as_view()),
-    path('logout/', LogoutView.as_view())
+    path('logout/', LogoutView.as_view()),
+    path('<int:user_id>/<str:token>', SetPasswordAndSecretDetails.as_view())
 ]

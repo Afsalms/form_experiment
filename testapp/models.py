@@ -30,3 +30,7 @@ class User(AbstractUser):
     company = models.ForeignKey('Company', on_delete=models.CASCADE)
     phone_number = models.CharField(max_length=50, unique=True)
     business_type = models.ForeignKey('BusinessType', on_delete=models.CASCADE)
+    secret_question = models.CharField(max_length=50, null=True, blank=True)
+    secret_answer = models.CharField(max_length=50, null=True, blank=True)
+
+

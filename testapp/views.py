@@ -3,6 +3,10 @@ from django.shortcuts import render
 # Create your views here.
 from django.views import View
 from django.db import transaction
+from django.contrib.auth import authenticate, login, logout
+from django.http import HttpResponseRedirect
+
+
 
 from .models import *
 
@@ -10,6 +14,10 @@ from .models import *
 from django import forms
 
 import json
+
+
+
+
 
 
 class SignUpForm(forms.Form):
@@ -74,8 +82,9 @@ class HomeView(View):
         return self.render_home_view(request, errors_json)
 
     def render_home_view(self, request, errors=None):
+        posted_data = request.POST
         return render(request, self.template_name, {"countries":  self.countries,
-            "user_types": self.user_types, "errors": errors})
+            "user_types": self.user_types, "errors": errors, "posted_data": posted_data})
 
 
     @transaction.atomic
@@ -91,13 +100,60 @@ class HomeView(View):
 
 from django.contrib.auth.mixins import LoginRequiredMixin
 
+class LoginRequiredView(View):
+    
+    def dispatch(self, request, *args, **kwargs):
+        if request.user.is_anonymous:
+            return HttpResponseRedirect('/login/')
+        return super().dispatch(request, *args, **kwargs)
 
 
-class DashboardView(LoginRequiredMixin, View):
+
+class DashboardView(LoginRequiredView):
 
     template_name = "dashboard.html"
-    login_url = '/login/'
 
     def get(self, request, *args, **kwargs):
         return render(request, self.template_name)
+
+
+class LoginView(View):
+    template_name = "index.html"
+
+    def dispatch(self, request, *args, **kwargs):
+        if not request.user.is_anonymous:
+            return HttpResponseRedirect('/home/')
+        return super().dispatch(request, *args, **kwargs)
+
+    def get(self, request, *args, **kwargs):
+        return self.render_login_view(request)
+
+
+    def render_login_view(self, request, errors=None):
+        posted_data = request.POST
+        return render(request, self.template_name, {
+            "errors": errors, "posted_data": posted_data})
+
+
+    def post(self, request, *args, **kwargs):
+        data = request.POST
+        email = data.get("username")
+        password = data.get("password")
+        user = authenticate(username=email, password=password)
+        if not user:
+            errors = {"email": [{"message": "Invalid credentials", "code": 1007}], 
+                "password": [{"message": "Invalid credentials", "code": 1007}]}
+            return self.render_login_view(request, errors)
+        login(request, user)
+        return HttpResponseRedirect('/home/')
+
+
+class LogoutView(LoginRequiredView):
+    
+
+    def get(self, request, *args, **kwargs):
+        logout(request)
+        return HttpResponseRedirect('/login/')
+
+
 

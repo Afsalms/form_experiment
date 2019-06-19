@@ -2,22 +2,11 @@
 
 <form method="POST" action="/login/">
     {%csrf_token%}
-    <input type="" name="first_name">
-    <input type="" name="last_name">
-    <select name="country" {% if errors.user_type %} style="background-color:red" {% endif %}>
-        {% for country in countries %}
-            <option value="{{country.id}}">{{country.name}}</option>
-        {% endfor %}
-    </select>
-    <select name="user_type">
-        {% for user_type in user_types %}
-            <option value="{{user_type.id}}">{{user_type.name}}</option>
-        {% endfor %}
-    </select>
-    <input type="" name="phonenumber">
-    <input type="submit" name="">
+    <input type="" name="username" value="{{posted_data.username}}">
+    <input type="password" name="password" value="{{posted_data.password}}">
+    <input type="submit">
 </form>
 
-{% if errors.user_type %}
+{% if errors %}
     <p>{{errors}}</p>
 {% endif %}

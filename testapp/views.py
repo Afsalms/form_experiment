@@ -109,6 +109,14 @@ class LoginRequiredView(View):
             return HttpResponseRedirect('/login/')
         return super().dispatch(request, *args, **kwargs)
 
+class AnonymousView(View):
+
+    def dispatch(self, request, *args, **kwargs):
+        if not request.user.is_anonymous:
+            return HttpResponseRedirect('/home/')
+        return super().dispatch(request, *args, **kwargs)
+
+
 
 
 class DashboardView(LoginRequiredView):
@@ -119,13 +127,10 @@ class DashboardView(LoginRequiredView):
         return render(request, self.template_name)
 
 
-class LoginView(View):
+class LoginView(AnonymousView):
     template_name = "index.html"
 
-    def dispatch(self, request, *args, **kwargs):
-        if not request.user.is_anonymous:
-            return HttpResponseRedirect('/home/')
-        return super().dispatch(request, *args, **kwargs)
+    
 
     def get(self, request, *args, **kwargs):
         return self.render_login_view(request)
@@ -159,18 +164,32 @@ class LogoutView(LoginRequiredView):
 
 
 from django.contrib.auth.tokens import default_token_generator
+from django.core.validators import RegexValidator
+
 
 
 class SecretDetailsForm(forms.Form):
+    
+
     secret_question = forms.CharField(max_length=255, min_length=1)
     secret_answer = forms.CharField(max_length=255, min_length=1)
-    password = forms.CharField(max_length=255, min_length=1)
+    
+
+class SecretDetailsWithPasswordForm(SecretDetailsForm):
+    password = forms.CharField(max_length=255, min_length=1, 
+        validators=[RegexValidator('^(?=.*\d)(?=.*[a-z])(?=.*[A-Z])(?=.*\W)', 
+            message="Password should be a combination of Alphabets and Numbers")])
 
 
-class SetPasswordAndSecretDetails(View):
-    template_name = "secret.html"
-    user = None
-    form = SecretDetailsForm
+class SetPasswordForm(forms.Form):
+    password = forms.CharField(max_length=255, min_length=1, 
+        validators=[RegexValidator('^(?=.*\d)(?=.*[a-z])(?=.*[A-Z])(?=.*\W)', 
+            message="Password should be a combination of Alphabets and Numbers")])
+
+
+
+
+class UserTokenProtectedView(View):
 
     def dispatch(self, request, *args, **kwargs):
         is_token_valid = self.validate_token(request, kwargs.get("user_id"),
@@ -187,6 +206,13 @@ class SetPasswordAndSecretDetails(View):
             return is_token_valid
         except User.DoesNotExist:
             return False
+
+
+
+class SetPasswordAndSecretDetails(UserTokenProtectedView):
+    template_name = "secret.html"
+    user = None
+    form = SecretDetailsWithPasswordForm
 
     def get(self, request, *args, **kwargs):
         return self.render_secret_view(request)
@@ -208,3 +234,101 @@ class SetPasswordAndSecretDetails(View):
         return render(request, self.template_name, {"errors": errors,
             "posted_data": posted_data, "path": request.path,
             "success": success})
+
+
+def send_forgot_password_notification(user):
+    to_address = user.email
+    link = user.generate_reset_password_link()
+    message = render_to_string('forgot_password_email_template.html', 
+        {"full_name": user.full_name, "link": link})
+    subject = "Restpassword"
+    email_from = settings.FROM_ADDRESS
+    email_queue_data = {"from_address": email_from, "to_address": to_address,
+                        "subject": subject, "content": message,
+                        "email_type": 1}
+    EmailQueue.objects.create(**email_queue_data)
+
+
+class ForgotPasswordView(AnonymousView):
+
+    template_name = "forgot_password.html"
+
+    def get(self, request, *args, **kwargs):
+        return self.render_forgot_password_view(request)
+
+    def post(self, request, *args, **kwargs):
+        data = request.POST
+        email = data.get("email")
+        user_obj, errors = User.get_user_using_email(email)
+        if errors:
+            return self.render_forgot_password_view(request, errors)
+        send_forgot_password_notification(user_obj)
+        return HttpResponseRedirect('/login/')
+
+    def render_forgot_password_view(self, request, errors=None):
+        posted_data = request.POST
+        return render(request, self.template_name, {"errors": errors,
+            "posted_data": posted_data})
+
+
+class ResetPasswordStep1View(UserTokenProtectedView):
+
+    template_name = "reset_password_step_1.html"
+    form = SecretDetailsForm
+
+    def get(self, request, *args, **kwargs):
+        return self.render_reset_password_view(request)
+
+
+    def post(self, request, *args, **kwargs):
+        form = self.form(data=request.POST)
+        if not form.is_valid():
+            errors_json = json.loads(form.errors.as_json())
+            return self.render_reset_password_view(request, errors_json)
+        if not (self.user.secret_question == form.cleaned_data["secret_question"] and 
+            self.user.secret_answer == form.cleaned_data["secret_answer"]):
+            errors = {"secret_question": [{"message": "Incorrect secret details", "code": 1007}], 
+                "secret_answer": [{"message": "Incorrect secret details", "code": 1007}]}
+            return self.render_reset_password_view(request, errors_json)
+        current_path = request.path
+        reset_password_step_2_link = current_path.replace('reset_password_step1', 'reset_password_step2')
+        self.user.question_verified = True
+        self.user.save()
+        return HttpResponseRedirect(reset_password_step_2_link)
+
+    def render_reset_password_view(self, request, errors=None):
+        posted_data = request.POST
+        return render(request, self.template_name, {"errors": errors,
+            "posted_data": posted_data, "path": request.path})
+
+
+class ResetPasswordStep2View(UserTokenProtectedView):
+
+    template_name = "reset_password_step_2.html"
+    form = SetPasswordForm
+
+    def get(self, request, *args, **kwargs):
+        if not self.user.question_verified:
+            current_path = request.path
+            reset_password_step_1_link = current_path.replace('reset_password_step2',
+                'reset_password_step1')
+            return HttpResponseRedirect(reset_password_step_1_link)
+        return self.render_reset_password_view(request)
+
+
+    def post(self, request, *args, **kwargs):
+        form = self.form(data=request.POST)
+        if not form.is_valid():
+            errors_json = json.loads(form.errors.as_json())
+            return self.render_reset_password_view(request, errors_json)
+        self.user.question_verified = False
+        self.user.set_password(form.cleaned_data["password"])
+        self.user.save()
+        return HttpResponseRedirect('/login/')
+
+    def render_reset_password_view(self, request, errors=None):
+        posted_data = request.POST
+        return render(request, self.template_name, {"errors": errors,
+            "posted_data": posted_data, "path": request.path})
+
+

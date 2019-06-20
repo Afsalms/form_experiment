@@ -47,6 +47,7 @@ def send_verified_account_notification(user):
     EmailQueue.objects.create(**email_queue_data)
 
 
+
 class User(AbstractUser):
     company = models.ForeignKey('Company', on_delete=models.CASCADE)
     phone_number = models.CharField(max_length=50, unique=True)
@@ -54,6 +55,7 @@ class User(AbstractUser):
     secret_question = models.CharField(max_length=50, null=True, blank=True)
     secret_answer = models.CharField(max_length=50, null=True, blank=True)
     status = models.IntegerField(default=0)
+    question_verified = models.IntegerField(default=False)
 
     @property
     def full_name(self):
@@ -63,7 +65,6 @@ class User(AbstractUser):
         if self.last_name:
             full_name += " " + self.last_name
         return full_name
-
 
     def generate_token(self):
         token = default_token_generator.make_token(self)
@@ -77,6 +78,29 @@ class User(AbstractUser):
         link = settings.BASE_URL + "/{}/{}/complete_registration/".format(
             self.id, self.generate_token())
         return link
+
+    def generate_reset_password_link(self):
+        link = settings.BASE_URL + "/{}/{}/reset_password_step1/".format(
+            self.id, self.generate_token())
+        return link
+
+    @staticmethod
+    def get_user_using_email(email):
+        try:
+            user_obj = User.objects.get(email=email)
+            return user_obj, {}
+        except:
+            return None, {"email": {"message": "User does not exists", "code": 1009}}
+
+    @staticmethod
+    def get_user_using_id(id):
+        try:
+            user_obj = User.objects.get(id=id)
+            return user_obj, {}
+        except:
+            return None, {"email": {"message": "User does not exists", "code": 1009}}
+
+
 
 
 @receiver(signals.pre_save, sender=User)

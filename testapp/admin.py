@@ -4,6 +4,9 @@ from django.utils.translation import ugettext_lazy as _
 
 from .models import User, Company, EmailQueue
 
+from django.contrib.auth.models import Group
+
+
 class UserAdmin(DjangoUserAdmin):
     """Define admin model for custom User model with no email field."""
 
@@ -26,3 +29,4 @@ class UserAdmin(DjangoUserAdmin):
 admin.site.register(User, UserAdmin)
 admin.site.register(Company)
 admin.site.register(EmailQueue)
+admin.site.unregister(Group)

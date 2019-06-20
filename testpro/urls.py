@@ -18,12 +18,16 @@ from django.urls import path
 
 
 from testapp.views import LoginView, DashboardView, LogoutView, \
-    SetPasswordAndSecretDetails
+    SetPasswordAndSecretDetails, ForgotPasswordView, ResetPasswordStep1View, \
+    ResetPasswordStep2View
 
 urlpatterns = [
     path('admin/', admin.site.urls),
     path('login/', LoginView.as_view()),
     path('home/', DashboardView.as_view()),
     path('logout/', LogoutView.as_view()),
-    path('<int:user_id>/<str:token>/complete_registration/', SetPasswordAndSecretDetails.as_view())
+    path('<int:user_id>/<str:token>/complete_registration/', SetPasswordAndSecretDetails.as_view()),
+    path('forgot_password/', ForgotPasswordView.as_view()),
+    path('<int:user_id>/<str:token>/reset_password_step1/', ResetPasswordStep1View.as_view()),
+    path('<int:user_id>/<str:token>/reset_password_step2/', ResetPasswordStep2View.as_view())
 ]

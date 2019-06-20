@@ -29,8 +29,8 @@ class Command(BaseCommand):
                 continue
             for email_obj in email_qs:
                 email_obj.status = 2
-                email_obj.from_address = "*******"
-                email_obj.to_address = "*********"
+                email_obj.from_address = "*****"
+                email_obj.to_address = "*****"
                 email_obj.save()
                 try:
                     cc_address = email_obj.cc_address

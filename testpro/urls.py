@@ -25,5 +25,5 @@ urlpatterns = [
     path('login/', LoginView.as_view()),
     path('home/', DashboardView.as_view()),
     path('logout/', LogoutView.as_view()),
-    path('<int:user_id>/<str:token>', SetPasswordAndSecretDetails.as_view())
+    path('<int:user_id>/<str:token>/complete_registration/', SetPasswordAndSecretDetails.as_view())
 ]

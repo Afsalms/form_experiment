@@ -1,11 +1,83 @@
-
-
+<style type="text/css">
+    .verified {
+        color: green;
+    }
+</style>
+<script src="https://ajax.googleapis.com/ajax/libs/jquery/3.4.1/jquery.min.js"></script>
 <form method="POST" action="/login/">
     {%csrf_token%}
     <input type="" name="username" value="{{posted_data.username}}">
     <input type="password" name="password" value="{{posted_data.password}}">
     <input type="submit">
 </form>
+<div class="message_div">
+    <p id="case1">Password should have min 8 character</p>
+    <p id="case2">Password should contain one uppercase and lowercase</p>
+    <p id="case3">Password should contain one number </p>
+    <p id="case4">Password should contain a special character</p>
+</div>
+<script type="text/javascript">
+    
+    $(document).ready(function(){
+        // alert("hello")
+        $('input[name=password]').keyup(function(e){
+            var password = $(this).val();
+            var isPasswordValid = checkpassword(password)
+        });
+
+        function checkPasswordHasRequiredLength(password){
+            if(password.length >= 8){
+                $('#case1').addClass('verified')
+                return true
+            }
+            $('#case1').removeClass('verified')
+            return false
+        }
+
+        function checkPasswordContainsUpperAndLowerCase(password){
+            var regex = /^(?=.*[a-z])(?=.*[A-Z])/
+            if(password.match(regex)){
+                $('#case2').addClass('verified')
+                return true
+            }
+            $('#case2').removeClass('verified')
+            return false
+        }
+
+        function checkPasswordContainsNumber(password){
+            var regex = /^(?=.*[0-9])/
+            if(password.match(regex)){
+                $('#case3').addClass('verified')
+                return true
+            }
+            $('#case3').removeClass('verified')
+            return false
+        }
+
+        function checkPasswordContainsSpecialCharacter(password){
+            var regex = /^(?=.*\W)/
+            if(password.match(regex)){
+                $('#case4').addClass('verified')
+                return true
+            }
+            $('#case4').removeClass('verified')
+            return false
+        }
+
+        function checkpassword(password){
+            var isPasswordValid = false
+            var hasRequiredLength = checkPasswordHasRequiredLength(password)
+            var containsUpperAndLowerCase = checkPasswordContainsUpperAndLowerCase(password)
+            var containsNumber = checkPasswordContainsNumber(password)
+            var containsSpecialCharacter = checkPasswordContainsSpecialCharacter(password)
+            return isPasswordValid
+
+        }
+
+    });
+
+
+</script>
 
 {% if errors %}
     <p>{{errors}}</p>

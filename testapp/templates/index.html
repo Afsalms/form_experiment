@@ -4,10 +4,19 @@
     }
 </style>
 <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.4.1/jquery.min.js"></script>
-<form method="POST" action="/login/">
+<script src="https://cdn.jsdelivr.net/npm/jquery-validation@1.19.1/dist/jquery.validate.js"></script>
+<form method="POST" action="/login/" id="login_form">
     {%csrf_token%}
     <input type="" name="username" value="{{posted_data.username}}">
     <input type="password" name="password" value="{{posted_data.password}}">
+    <select name="business_type">
+        <option></option>
+        <option>First option</option>
+        <option>Second option</option>
+        <option>Third option</option>
+    </select>
+    <input name="other_option">
+    <input type="checkbox" name="term_and_condition">
     <input type="submit">
 </form>
 <div class="message_div">
@@ -72,12 +81,58 @@
             var containsNumber = checkPasswordContainsNumber(password)
             var containsSpecialCharacter = checkPasswordContainsSpecialCharacter(password)
             return isPasswordValid
-
         }
 
+        $.validator.addMethod("regex", function(value, element, regexp) {
+            var found = value.match(regexp);
+            if(!found){
+                return false
+            }else{
+                return true
+            }},
+        "Please check your input.");
+
+        $.validator.addMethod('requiredIfThirdOption', function(value, element){
+            var selectedBusinessType = $('select[name=business_type]').val()
+            if (selectedBusinessType == "Third option" && ! value){
+                return false
+            }
+            return true
+        });
+
+
+        $('#login_form').validate({
+            rules: {
+                "username": {
+                    required: true,
+                    email: true
+                },
+                "password": {
+                    required: true,
+                    regex : /^(?=.*[a-z])(?=.*[A-Z])(?=.*[0-9])(?=.*\W).{8,}/
+                },
+                "business_type": {
+                    required: true
+                },
+                "term_and_condition": {
+                    required: true
+                },
+                "other_option": {
+                    requiredIfThirdOption: true
+                }
+            },
+            messages : {
+                password : "Please provide a valid password",
+                username: "Please enter a valid email address",
+                business_type: "Please select business type",
+                term_and_condition: "Please accept our terms and condition",
+                other_option: "Please fill this field"
+
+            }
     });
 
 
+    });
 </script>
 
 {% if errors %}

@@ -65,6 +65,7 @@
         }
 
         function checkpassword(password){
+            // var regex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*[0-9])(?=.*\W).{8,}/
             var isPasswordValid = false
             var hasRequiredLength = checkPasswordHasRequiredLength(password)
             var containsUpperAndLowerCase = checkPasswordContainsUpperAndLowerCase(password)
